@@ -19,6 +19,92 @@
     dw 128 dup(0)
 
 .code
+    
+    uprow proc far
+            dec row
+            
+            mov ah,02h
+            mov dh,row
+            mov dl,column
+            mov bh,0
+            int 10h
+            ret
+    uprow endp
+    
+        downrow proc far
+            inc row
+            
+            mov ah,02h
+            mov dh,row
+            mov dl,column
+            mov bh,0
+            int 10h
+            ret
+         downrow endp
+      rightcolumn proc far
+            inc column
+            mov ah,02h
+            mov dh,row
+            mov dl,column
+            mov bh,0
+            int 10h
+            ret
+      rightcolumn endp
+       
+      leftcolumn proc far
+      dec column
+            
+            mov ah,02h
+            mov dh,row
+            mov dl,column
+            mov bh,0
+            int 10h
+            ret
+       leftcolumn endp
+      
+      arrowcheck proc far
+      ; check if the button is arrow up
+      cmp ah, 48h
+        jne arrowDownCheck
+        arrowUP:
+            call uprow
+            mov ax, 1 ; ax = 1 if an arrow key was actually pressed
+            jmp exitarrowcheck
+            
+        arrowDownCheck:
+        cmp ah,50h
+            jne arrowRightCheck
+        
+        arrowDown:
+            call downrow
+            mov ax, 1 ; ax = 1 if an arrow key was actually pressed
+            jmp exitarrowcheck
+            
+        arrowRightCheck:
+        cmp ah,4Dh
+            jne arrowLeftCheck
+            
+        arrowRight:
+            
+            call rightcolumn
+            mov ax, 1 ; ax = 1 if an arrow key was actually pressed
+            jmp exitarrowcheck
+        
+       arrowLeftCheck:
+       cmp ah, 4Bh
+       jne exitarrowcheck
+       
+       arrowLeft:  
+        call leftcolumn
+        mov ax, 1 ; ax = 1 if an arrow key was actually pressed
+        jmp exitarrowcheck
+       
+            
+        exitarrowcheck:
+        ret
+      
+      arrowcheck endp
+      
     main proc far
         mov ax, @data
         mov ds, ax
@@ -81,8 +167,12 @@
 
         mov ah,0
         int 16h ;taking a character from std in
-        
-        
+        ; Check if arrow key is pressed
+
+
+        call arrowcheck ;check for arrow
+        cmp ax, 1
+        je input_loop
         cmp al, 8 ;see if it is backspace
         je backspace
         jne newline
@@ -178,9 +268,8 @@
         mov bp, offset msg2
         mov ah,13h
         int 10h
-        jmp input_loop_bridge2
         
-        ;int 21h / ah=1 -> read character from standard input, with echo, result is stored in AL
+        
 
         
         
@@ -189,7 +278,11 @@
         mov ah, 1
         int 21h; wait for a key input
         
+        
         mov ah,4ch
         int 21h
+        
         main endp
-    end main
+
+
+   end main
