@@ -10,11 +10,27 @@
          db "Exit(ESC)  CTRL+E",0ah,0dh
     msg2end db 0
     ;file3 db "t1.txt", o
-    handle dw ?
+    ;handle dw ?
     mystack db ?
         col db ?
         column db 0
         row db 6
+        select_buffer db 100 dup(0) ; a variable to store the data selected
+    select_buffer_end db 0
+    select_buffer_length equ 100 ; the buffer length
+    scan_code db 0
+    temp_char db 0
+    
+    filename db "Results.txt",0
+    handle  dw ?
+    
+    file_error db "Erorr: couldn't open the file."
+    file_error_end db "0$"
+    
+    file_buffer db 100 dup(0)
+    file_buffer_length equ 100
+    
+    
 .STACK 
     dw 128 dup(0)
 
@@ -105,10 +121,42 @@
       
       arrowcheck endp
       
+      
+     select proc far
+        mov si, offset select_buffer ; initialize the si to point at the first byte of the byffer 
+        mov cx, select_buffer_length ; set the maximum amount of characters to be selcted
+     select_loop:
+        mov ah, 10h
+        int 16h
+        call arrowcheck
+        cmp ax, 1 ; see if an arrow is pressed
+        ;jne exit_select
+        read_char:
+            mov ah,10h
+            int 16h ; read a charcter at cursor position
+            cmp al, 13 ; check if enter is pressed
+            je exit_select
+            mov [si], al ; store the charcter in the buffer  
+            inc si ; move the pointer to the next byte of the buffer
+            
+            loop select_loop
+        exit_select: 
+        
+        ret
+      select endp
     main proc far
         mov ax, @data
         mov ds, ax
         mov es,ax
+        push si
+        push dx
+        push cx
+        push bx
+        push ax
+        
+        mov si, offset file_buffer ; Initialize SI to point to the buffer
+        mov cx, file_buffer_length ; Set the maximum number of characters to read
+        
         ;setting the screen to 80x25 text mode
         mov ah,0h
         mov al, 03h
@@ -165,11 +213,25 @@
        
         input_loop:
 
-        mov ah,0
-        int 16h ;taking a character from std in
+        mov ah,10h
+        int 16h
+        ;taking a character from std in
         ; Check if arrow key is pressed
 
-
+        ;cmp al, 97 ; check for ctrl+n
+        ;jne check_for_arrow
+        mov [si], al
+        inc si
+        
+        ;call select
+        ;mov al, offset select_buffer
+        ;mov ah,0ah
+        ;mov cx,1
+        ;mov bh,0
+        ;int 10h
+        
+        ;jmp input_loop
+       check_for_arrow:
         call arrowcheck ;check for arrow
         cmp ax, 1
         je input_loop
@@ -187,9 +249,9 @@
       backspace:
         ; set  cursor position back
         mov ah,02h
-        mov dh,row
-        dec column
-        mov dl,column
+        mov dh,row ; set the row
+        dec column ; decrement the column to backa  column (move right)
+        mov dl,column ; set the column
         mov bh,0
         int 10h
         ;print space
@@ -202,8 +264,8 @@
         jne input_loop
         back_line:
         ; move the cursor position to the end of the row above
-            dec row
-            mov column, 80
+            dec row ; decrement the row to move up
+            mov column, 80 ;  the screen is 80x25 so the last screen colum is 80
             mov ah,02h
             mov dh,row
             mov dl,column
@@ -275,6 +337,26 @@
         
         ;code end
         exit:
+        mov ah, 3ch
+        mov cx, 0
+        mov dx, offset filename
+        mov ah, 3ch
+        int 21h
+        mov handle, ax
+        
+        ;write into file the input char
+        mov ah,40h
+        mov bx, handle
+        mov cx, file_buffer_length
+        mov dx, offset file_buffer
+        int 21h
+        
+        ;close file
+        mov ah,3eh
+        mov bx,handle
+        int 21h
+        
+        
         mov ah, 1
         int 21h; wait for a key input
         
