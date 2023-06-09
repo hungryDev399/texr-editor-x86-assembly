@@ -21,7 +21,7 @@
     select_buffer_length equ 1000 ; the buffer length
     scan_code db 0
     temp_char db 0
-    
+    mouse_temp_char db 0
     filename db "Results.txt",0
     handle  dw ?
     
@@ -93,35 +93,35 @@
         ;left button -> bx = 1
         ;right button -> bx = 2
         ;both buttons -> bx = 3
-        wait_for_key: 
-            mov ax,0
-            int 33h
-         
+        mouse_check proc 
+     
+        
          mov ax,3
          int 33h
          cmp bx,1
+
          je mymouse_bridge2
-         ; check for keystroke in keyboard buffer
-         mov ah, 1
-         int 16h
-         jz wait_for_key
 
+         ret
+        endp mouse_check
         
-         
-
-         ;jmp wait_for_key ; wait for another key
-
-       
+        
+        wait_for_key:
+         mov ax,0
+         int 33h
         input_loop:
+        ; initializing the mouse and checking if the left button is pressed
         
-        mov ah,10h
-        int 16h
+        call mouse_check
+        
+         ; getting input from the keyboard
+         mov ah,10h
+         int 16h
         
         cmp al, 13h
         je check_for_save
            
-        
-       ;jmp input_loop
+
        check_for_arrow:
         call arrowcheck ;check for arrow
         cmp ax, 1
@@ -211,9 +211,10 @@
       checkESC:
         cmp al, 27 ;check if ESC is pressed
         je exit
-        jmp input_loop_bridge
+        jmp input_loop_bridge2
        
        mymouse:
+
         mov al,1
         mov bh, 0
         mov bl, 01001111b
@@ -225,7 +226,7 @@
         mov bp, offset msg2
         mov ah,13h
         int 10h
-        
+        jmp input_loop_bridge
         
         ;code end
         exit:
